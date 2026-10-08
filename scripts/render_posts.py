@@ -1,153 +1,171 @@
-"""Render ELEPHAN Instagram carousel slides as 1080x1350 PNGs."""
-
+"""Render ELEPHAN Instagram carousel slides as editorial 1080x1350 PNGs."""
 import json
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "generated"
-W, H = 1080, 1350
-BG = "#0B1020"
-PANEL = "#121A31"
-PANEL_2 = "#17203B"
-GOLD = "#D6B36A"
-IVORY = "#F6F0E5"
-LAVENDER = "#8E7BAE"
-MUTED = "#B8B2C2"
-LINE = "#2A3042"
+ROOT=Path(__file__).resolve().parents[1]
+OUT=ROOT/"generated"
+W,H=1080,1350
 
-FONT_BOLD = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-FONT_REG = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+NAVY="#0B1020"
+NAVY2="#151D35"
+IVORY="#F4EFE5"
+GOLD="#C9A55D"
+LAV="#9A8AB8"
+MUTED="#777184"
+INK="#121728"
+SOFT="#E8E1D7"
 
+FONT_BOLD="/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
+FONT_REG="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 
-def font(path, size):
-    return ImageFont.truetype(path, size=size)
+def font(path,size):
+    return ImageFont.truetype(path,size=size)
 
-
-def wrap(draw, text, fnt, max_width):
-    lines = []
+def wrap(draw,text,fnt,max_width):
+    lines=[]
     for block in text.split("\n"):
-        if not block:
+        if block=="":
             lines.append("")
             continue
-        current = ""
+        cur=""
         for ch in block:
-            test = current + ch
-            if draw.textbbox((0, 0), test, font=fnt)[2] <= max_width:
-                current = test
+            test=cur+ch
+            if draw.textbbox((0,0),test,font=fnt)[2] <= max_width:
+                cur=test
             else:
-                if current:
-                    lines.append(current)
-                current = ch
-        if current:
-            lines.append(current)
+                if cur: lines.append(cur)
+                cur=ch
+        if cur: lines.append(cur)
     return lines
 
+def draw_text_block(draw,text,fnt,x,y,max_width,line_h,fill,align="left"):
+    lines=wrap(draw,text,fnt,max_width)
+    for i,line in enumerate(lines):
+        if align=="center":
+            box=draw.textbbox((0,0),line,font=fnt)
+            xx=x+(max_width-(box[2]-box[0]))/2
+        else:
+            xx=x
+        draw.text((xx,y+i*line_h),line,font=fnt,fill=fill)
+    return y+len(lines)*line_h
 
-def draw_brand(draw, slide_no):
-    draw.ellipse((72, 72, 118, 118), outline=GOLD, width=5)
-    draw.arc((82, 80, 108, 109), 35, 310, fill=GOLD, width=4)
-    draw.ellipse((101, 87, 108, 94), fill=GOLD)
-    draw.text((140, 70), "ELEPHAN", font=font(FONT_BOLD, 34), fill=IVORY)
-    draw.text((140, 112), "夜職の仕事運・金運", font=font(FONT_REG, 24), fill=MUTED)
-    draw.text((920, 78), f"{slide_no}/5", font=font(FONT_REG, 28), fill=MUTED)
+def elephant_mark(draw,x,y,scale=1.0,color=GOLD):
+    r=int(24*scale)
+    draw.ellipse((x,y,x+r*2,y+r*2),outline=color,width=max(2,int(3*scale)))
+    draw.arc((x+r*0.55,y+r*0.35,x+r*1.55,y+r*1.55),35,310,fill=color,width=max(2,int(3*scale)))
+    draw.ellipse((x+r*1.42,y+r*0.75,x+r*1.58,y+r*0.91),fill=color)
 
+def brand(draw,dark=True,slide_no=1):
+    fg=IVORY if dark else INK
+    elephant_mark(draw,64,58,1.0,GOLD)
+    draw.text((124,55),"ELEPHAN",font=font(FONT_BOLD,30),fill=fg)
+    draw.text((124,93),"夜職の仕事運・金運",font=font(FONT_REG,20),fill=LAV if dark else MUTED)
+    draw.text((946,64),f"{slide_no}/5",font=font(FONT_REG,22),fill=LAV if dark else MUTED)
 
-def center_lines(draw, text, fnt, max_width, y, line_h, fill=IVORY):
-    lines = wrap(draw, text, fnt, max_width)
-    for i, line in enumerate(lines):
-        bbox = draw.textbbox((0, 0), line, font=fnt)
-        x = (W - (bbox[2] - bbox[0])) // 2
-        draw.text((x, y + i * line_h), line, font=fnt, fill=fill)
-    return len(lines)
+def celestial(draw,dark=True):
+    c=GOLD if dark else LAV
+    draw.arc((780,-100,1160,300),105,245,fill=c,width=5)
+    draw.ellipse((896,205,908,217),fill=c)
+    draw.ellipse((838,160,845,167),fill=LAV if dark else GOLD)
 
+def footer(draw,dark=True):
+    fg="#9D98A9" if dark else "#777184"
+    draw.text((64,1268),"占いは判断材料のひとつ。大きな判断は現実の条件も確認してください。",font=font(FONT_REG,18),fill=fg)
 
-def render_empathy(draw, text, slide_no):
-    # Editorial / quote-led layout: large statement, more breathing room.
-    draw.arc((650, -145, 1160, 390), 105, 245, fill=GOLD, width=7)
-    draw.ellipse((865, 265, 879, 279), fill=LAVENDER)
-    if slide_no == 1:
-        draw.text((76, 300), "TONIGHT'S NOTE", font=font(FONT_BOLD, 24), fill=GOLD)
-        draw.rounded_rectangle((72, 360, 1008, 975), radius=42, fill=PANEL, outline=LINE, width=2)
-        center_lines(draw, text, font(FONT_BOLD, 72), 790, 505, 102)
-        draw.text((77, 1025), "大きな決断は、疲れた夜だけで決めない。", font=font(FONT_REG, 27), fill=MUTED)
+def cover(draw,text,creative_type):
+    # Editorial cover: no card-in-card. Huge hook with a single strong graphic device.
+    dark=creative_type!="checklist"
+    bg=NAVY if dark else IVORY
+    fg=IVORY if dark else INK
+    brand(draw,dark,1)
+    celestial(draw,dark)
+    label={"diagnostic":"SELF CHECK","checklist":"WORK NOTE","empathy":"TONIGHT"}[creative_type]
+    draw.text((66,250),label,font=font(FONT_BOLD,24),fill=GOLD if dark else LAV)
+
+    if creative_type=="diagnostic":
+        # big question mark as visual anchor
+        draw.text((720,330),"? ",font=font(FONT_BOLD,250),fill=NAVY2)
+        y=390
+        y=draw_text_block(draw,text,font(FONT_BOLD,78),72,y,720,104,fg)
+        draw.line((72,1035,560,1035),fill=GOLD,width=4)
+        draw.text((72,1070),"答えを急がず、まず分けて見る。",font=font(FONT_REG,28),fill=LAV)
+    elif creative_type=="checklist":
+        draw.text((72,360),"01",font=font(FONT_BOLD,160),fill=SOFT)
+        y=430
+        y=draw_text_block(draw,text,font(FONT_BOLD,76),290,y,700,102,fg)
+        draw.rounded_rectangle((72,1030,435,1108),radius=38,fill=INK)
+        draw.text((110,1050),"保存して見返す",font=font(FONT_BOLD,28),fill=IVORY)
     else:
-        draw.rounded_rectangle((72, 320, 1008, 1020), radius=42, fill=PANEL, outline=LINE, width=2)
-        draw.text((115, 390), "CHECK", font=font(FONT_BOLD, 28), fill=GOLD)
-        center_lines(draw, text, font(FONT_BOLD, 61), 760, 535, 90)
+        draw.line((72,350,72,970),fill=GOLD,width=5)
+        y=410
+        y=draw_text_block(draw,text,font(FONT_BOLD,80),112,y,820,110,fg)
+        draw.text((112,1015),"一晩の数字と、自分の価値は別。",font=font(FONT_REG,28),fill=LAV)
+    footer(draw,dark)
 
+def insight_slide(draw,text,slide_no,creative_type):
+    # Alternating light/dark spreads; this is intentionally not a repeated template.
+    dark = slide_no in (2,4)
+    bg=NAVY if dark else IVORY
+    fg=IVORY if dark else INK
+    brand(draw,dark,slide_no)
 
-def render_checklist(draw, text, slide_no):
-    # Structured checklist layout with visible modular cards.
-    draw.text((76, 295), "CHECK LIST", font=font(FONT_BOLD, 25), fill=GOLD)
-    if slide_no == 1:
-        draw.rounded_rectangle((72, 345, 1008, 940), radius=36, fill=PANEL, outline=GOLD, width=2)
-        center_lines(draw, text, font(FONT_BOLD, 68), 800, 485, 98)
-        draw.rounded_rectangle((72, 995, 470, 1065), radius=35, fill=PANEL_2)
-        draw.text((105, 1013), "保存してあとで確認", font=font(FONT_BOLD, 28), fill=IVORY)
+    if slide_no==2:
+        draw.text((68,245),"まず、ここを見る",font=font(FONT_BOLD,25),fill=GOLD)
+        draw_text_block(draw,text,font(FONT_BOLD,64),72,360,860,90,fg)
+        draw.line((72,1025,1008,1025),fill=GOLD if dark else LAV,width=3)
+        draw.text((72,1060),"感情と事実を分ける。",font=font(FONT_REG,30),fill=LAV if dark else MUTED)
+
+    elif slide_no==3:
+        draw.text((68,235),"CHECK",font=font(FONT_BOLD,24),fill=LAV)
+        parts=[p for p in text.split("\n") if p.strip()]
+        y=330
+        for i,p in enumerate(parts[:4],1):
+            draw.text((72,y),f"{i:02}",font=font(FONT_BOLD,52),fill=GOLD)
+            draw.line((155,y+35,220,y+35),fill=GOLD,width=3)
+            draw_text_block(draw,p,font(FONT_BOLD,44),255,y+2,720,60,fg)
+            y+=165
+
+    elif slide_no==4:
+        draw.text((68,240),"HOW TO READ IT",font=font(FONT_BOLD,24),fill=GOLD)
+        draw.rounded_rectangle((64,320,1016,1000),radius=38,outline=NAVY2 if dark else SOFT,width=2)
+        draw_text_block(draw,text,font(FONT_BOLD,58),110,455,820,82,fg,align="center")
+        draw.text((110,915),"→ 次に動かす場所を一つだけ決める",font=font(FONT_REG,28),fill=LAV if dark else MUTED)
+
     else:
-        parts = [p for p in text.split("\n") if p.strip()]
-        y = 360
-        for part in parts[:3]:
-            draw.rounded_rectangle((72, y, 1008, y + 165), radius=30, fill=PANEL, outline=LINE, width=2)
-            draw.ellipse((110, y + 55, 138, y + 83), fill=GOLD)
-            fnt = font(FONT_BOLD, 48)
-            lines = wrap(draw, part, fnt, 760)
-            for i, line in enumerate(lines):
-                draw.text((175, y + 45 + i * 66), line, font=fnt, fill=IVORY)
-            y += 195
+        # CTA / summary slide: lighter commercial touch, not banner-like.
+        draw.text((68,240),"NEXT STEP",font=font(FONT_BOLD,24),fill=LAV)
+        draw_text_block(draw,text,font(FONT_BOLD,58),72,360,880,82,fg)
+        draw.rounded_rectangle((72,925,1008,1088),radius=40,fill=NAVY2 if not dark else IVORY)
+        cta_fill=IVORY if not dark else INK
+        draw.text((118,970),"必要な方だけ、プロフィールから個別に。",font=font(FONT_BOLD,30),fill=cta_fill)
 
+    footer(draw,dark)
 
-def render_diagnostic(draw, text, slide_no):
-    # Choice / diagnosis layout: split the problem into decision blocks.
-    draw.text((76, 292), "SORT THE FLOW", font=font(FONT_BOLD, 25), fill=LAVENDER)
-    if slide_no == 1:
-        draw.rounded_rectangle((72, 350, 1008, 810), radius=44, fill=PANEL, outline=LINE, width=2)
-        center_lines(draw, text, font(FONT_BOLD, 67), 800, 470, 96)
-        for i, label in enumerate(("追う", "守る", "動く")):
-            x1 = 72 + i * 312
-            draw.rounded_rectangle((x1, 885, x1 + 280, 1015), radius=30, outline=GOLD if i == 1 else LINE, width=3)
-            bbox = draw.textbbox((0, 0), label, font=font(FONT_BOLD, 35))
-            draw.text((x1 + 140 - (bbox[2] - bbox[0]) / 2, 930), label, font=font(FONT_BOLD, 35), fill=IVORY)
+def render_slide(text,slide_no,output,creative_type):
+    dark = True if slide_no==1 and creative_type!="checklist" else slide_no in (2,4)
+    bg=NAVY if dark else IVORY
+    img=Image.new("RGB",(W,H),bg)
+    draw=ImageDraw.Draw(img)
+    if slide_no==1:
+        cover(draw,text,creative_type)
     else:
-        draw.rounded_rectangle((72, 350, 1008, 1015), radius=44, fill=PANEL, outline=LINE, width=2)
-        draw.text((115, 405), f"0{slide_no-1}", font=font(FONT_BOLD, 70), fill=GOLD)
-        center_lines(draw, text, font(FONT_BOLD, 58), 750, 555, 88)
-
-
-def render_slide(text, slide_no, output, creative_type):
-    img = Image.new("RGB", (W, H), BG)
-    draw = ImageDraw.Draw(img)
-    draw_brand(draw, slide_no)
-
-    if creative_type == "empathy":
-        render_empathy(draw, text, slide_no)
-    elif creative_type == "checklist":
-        render_checklist(draw, text, slide_no)
-    elif creative_type == "diagnostic":
-        render_diagnostic(draw, text, slide_no)
-    else:
-        render_empathy(draw, text, slide_no)
-
-    draw.line((72, 1190, 1008, 1190), fill=LINE, width=2)
-    draw.text((72, 1248), "占いは判断材料のひとつ。大きな仕事・金銭判断は現実の条件も確認してください。", font=font(FONT_REG, 20), fill=MUTED)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output, "PNG", optimize=True)
-
+        insight_slide(draw,text,slide_no,creative_type)
+    output.parent.mkdir(parents=True,exist_ok=True)
+    img.save(output,"PNG",optimize=True)
 
 def main():
-    posts = json.loads((ROOT / "posts.json").read_text(encoding="utf-8"))
+    posts=json.loads((ROOT/"posts.json").read_text(encoding="utf-8"))
     for post in posts:
-        if len(post["slides"]) != 5:
+        if len(post["slides"])!=5:
             raise ValueError(f"{post['date']}: exactly five slides are required")
-        creative_type = post.get("creative_type", "empathy")
-        if creative_type not in {"empathy", "checklist", "diagnostic"}:
+        creative_type=post.get("creative_type","empathy")
+        if creative_type not in {"empathy","checklist","diagnostic"}:
             raise ValueError(f"{post['date']}: invalid creative_type")
-        day_dir = OUT / post["date"]
-        for idx, text in enumerate(post["slides"], start=1):
-            render_slide(text, idx, day_dir / f"{idx:02d}.png", creative_type)
-        print(f"rendered {post['date']} type={creative_type}")
+        day=OUT/post["date"]
+        for i,text in enumerate(post["slides"],1):
+            render_slide(text,i,day/f"{i:02d}.png",creative_type)
+        print(f"rendered {post['date']} editorial_v2 type={creative_type}")
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
