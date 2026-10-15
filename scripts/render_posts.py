@@ -29,16 +29,18 @@ def wrap(draw,text,fnt,maxw):
     return out
 
 def gradient():
-    img=Image.new("RGB",(W,H))
-    px=img.load()
-    for y in range(H):
-        t=y/(H-1)
-        for x in range(W):
-            sx=x/(W-1)
-            r=int(NAVY[0]*(1-t)+PURPLE[0]*t + 18*math.sin(sx*math.pi)*t)
-            g=int(NAVY[1]*(1-t)+PURPLE[1]*t)
-            b=int(NAVY[2]*(1-t)+PURPLE[2]*t + 16*sx)
-            px[x,y]=(max(0,min(r,255)),max(0,min(g,255)),max(0,min(b,255)))
+    # Fast vertical gradient + soft magenta/cyan light blooms.
+    top=Image.new("RGB",(W,H),NAVY)
+    bottom=Image.new("RGB",(W,H),PURPLE)
+    mask=Image.linear_gradient("L").resize((W,H))
+    img=Image.composite(bottom,top,mask).convert("RGBA")
+
+    blooms=Image.new("RGBA",(W,H),(0,0,0,0))
+    bd=ImageDraw.Draw(blooms)
+    bd.ellipse((610,-180,1240,470),fill=(*PINK,95))
+    bd.ellipse((-260,760,420,1440),fill=(*CYAN,70))
+    blooms=blooms.filter(ImageFilter.GaussianBlur(110))
+    img.alpha_composite(blooms)
     return img
 
 def glow_text(base,pos,text,fnt,fill,glow):
@@ -87,7 +89,7 @@ def footer(img):
     d.text((54,1288),"占いは判断材料のひとつ。大きな判断は現実の条件も確認してください。",font=font(FONT_REG,17),fill=(160,151,177))
 
 def render(text,n,out):
-    img=gradient().convert("RGBA"); decorations(img,hash(str(out))&0xffffffff); brand(img,n); d=ImageDraw.Draw(img)
+    img=gradient().convert("RGBA"); decorations(img,sum(str(out).encode("utf-8")) & 0xffffffff); brand(img,n); d=ImageDraw.Draw(img)
     if n==1:
         d.rounded_rectangle((55,205,360,265),30,fill=(255,255,255,22),outline=(*GOLD,180),width=2)
         d.text((88,220),"NIGHT WORK / SELF CHECK",font=font(FONT_BOLD,20),fill=GOLD)
