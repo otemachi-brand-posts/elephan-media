@@ -1,35 +1,48 @@
-"""Render ELEPHAN Instagram slides in a loud pop-night editorial system."""
-import json, math, random
+"""Render ELEPHAN Instagram slides in a high-impact nightlife editorial system."""
+import io, json, math, urllib.request
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/"generated"
 W,H=1080,1350
+
 FONT_BOLD="/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 FONT_REG="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+FONT_SERIF="/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc"
 
-BLACK=(8,8,14)
-NAVY=(12,16,42)
-PINK=(255,45,135)
-MAGENTA=(207,36,255)
-CYAN=(30,225,255)
-ORANGE=(255,125,44)
-YELLOW=(255,222,77)
-CREAM=(255,248,235)
-WHITE=(255,255,255)
-INK=(18,20,30)
-GOLD=(245,190,58)
-MUTED=(106,108,122)
+WHITE=(255,255,255); BLACK=(7,8,14); PINK=(255,31,126)
+YELLOW=(255,218,70); GOLD=(230,185,70); CYAN=(32,214,255)
+PURPLE=(29,10,58); RED=(140,8,38); MUTED=(225,220,228)
+
+PORTRAIT_URL="https://images.unsplash.com/photo-1773614784571-20d58c26597f?auto=format&fit=crop&w=1800&q=82"
+GLASS_URL="https://images.unsplash.com/photo-1512834109963-ce6d308d7eea?auto=format&fit=crop&w=1800&q=82"
+PURPLE_GLASS_URL="https://images.unsplash.com/photo-1737523644515-ec9a40bcd778?auto=format&fit=crop&w=1800&q=82"
 
 def font(path,size):
     return ImageFont.truetype(path,size=size)
 
+def load_remote(url):
+    req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
+    with urllib.request.urlopen(req,timeout=30) as resp:
+        return Image.open(io.BytesIO(resp.read())).convert("RGB")
+
+def cover_crop(im):
+    scale=max(W/im.width,H/im.height)
+    im=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
+    x=max(0,(im.width-W)//2); y=max(0,(im.height-H)//2)
+    return im.crop((x,y,x+W,y+H)).convert("RGBA")
+
+def darken(im,amount=0.35):
+    layer=Image.new("RGBA",im.size,(0,0,0,int(255*amount)))
+    im.alpha_composite(layer)
+    return im
+
 def wrap(draw,text,fnt,maxw):
-    out=[]
+    lines=[]
     for block in text.split("\n"):
-        if not block:
-            out.append("")
+        if block=="":
+            lines.append("")
             continue
         cur=""
         for ch in block:
@@ -37,177 +50,171 @@ def wrap(draw,text,fnt,maxw):
             if draw.textbbox((0,0),test,font=fnt)[2] <= maxw:
                 cur=test
             else:
-                if cur: out.append(cur)
+                if cur: lines.append(cur)
                 cur=ch
-        if cur: out.append(cur)
-    return out
+        if cur: lines.append(cur)
+    return lines
 
-def elephant(draw,x,y,s=1.0,color=WHITE):
-    w=max(2,int(4*s))
-    draw.ellipse((x,y,x+52*s,y+52*s),outline=color,width=w)
-    draw.arc((x+14*s,y+12*s,x+47*s,y+48*s),25,310,fill=color,width=w)
-    draw.ellipse((x+38*s,y+20*s,x+43*s,y+25*s),fill=color)
-
-def gradient_bg(c1,c2):
-    top=Image.new("RGB",(W,H),c1)
-    bottom=Image.new("RGB",(W,H),c2)
-    mask=Image.linear_gradient("L").resize((W,H))
-    return Image.composite(bottom,top,mask).convert("RGBA")
-
-def add_glow(img,box,color,blur=90,alpha=150):
-    layer=Image.new("RGBA",img.size,(0,0,0,0))
-    d=ImageDraw.Draw(layer)
-    d.ellipse(box,fill=(*color,alpha))
-    img.alpha_composite(layer.filter(ImageFilter.GaussianBlur(blur)))
-
-def add_halftone(img,seed,area,color,spacing=28,r=3,alpha=120):
-    rnd=random.Random(seed)
-    layer=Image.new("RGBA",img.size,(0,0,0,0))
-    d=ImageDraw.Draw(layer)
-    x0,y0,x1,y1=area
-    for y in range(y0,y1,spacing):
-        for x in range(x0,x1,spacing):
-            rr=r+rnd.choice([0,0,1])
-            d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(*color,alpha))
-    img.alpha_composite(layer)
-
-def add_starburst(img,cx,cy,r1,r2,color,n=20):
-    pts=[]
-    for i in range(n*2):
-        a=-math.pi/2 + i*math.pi/n
-        r=r2 if i%2==0 else r1
-        pts.append((cx+math.cos(a)*r,cy+math.sin(a)*r))
-    ImageDraw.Draw(img).polygon(pts,fill=color)
-
-def add_tape(img,xy,text,fill,angle=0):
-    w,h=410,72
-    tape=Image.new("RGBA",(w,h),(0,0,0,0))
-    d=ImageDraw.Draw(tape)
-    d.rounded_rectangle((0,0,w,h),18,fill=fill)
-    d.text((24,16),text,font=font(FONT_BOLD,27),fill=BLACK)
-    tape=tape.rotate(angle,expand=True,resample=Image.Resampling.BICUBIC)
-    img.alpha_composite(tape,xy)
-
-def draw_outlined_lines(img,text,x,y,size,maxw,fill,stroke,stroke_width=6,line_gap=12):
+def brand(img,n):
     d=ImageDraw.Draw(img)
-    f=font(FONT_BOLD,size)
-    lines=wrap(d,text,f,maxw)
+    d.ellipse((42,40,88,86),outline=GOLD,width=3)
+    d.arc((54,50,83,84),20,310,fill=GOLD,width=3)
+    d.text((105,42),"ELEPHAN",font=font(FONT_BOLD,28),fill=WHITE)
+    d.text((105,80),"夜職の仕事運・金運",font=font(FONT_REG,17),fill=WHITE)
+    d.text((948,42),f"{n:02d}",font=font(FONT_SERIF,58),fill=WHITE)
+
+def marker_circle(img,box):
+    d=ImageDraw.Draw(img)
+    for off in (0,7,-6):
+        b=(box[0]+off,box[1],box[2]-off,box[3])
+        d.arc(b,190,520,fill=PINK,width=8)
+
+def headline(img,text,x,y,size=74,maxw=920,stroke=0,stroke_fill=BLACK,fill=WHITE,serif=False):
+    d=ImageDraw.Draw(img)
+    f=font(FONT_SERIF if serif else FONT_BOLD,size)
     yy=y
-    for line in lines:
-        d.text((x,yy),line,font=f,fill=fill,stroke_width=stroke_width,stroke_fill=stroke)
-        yy += size+line_gap
+    for line in wrap(d,text,f,maxw):
+        d.text((x,yy),line,font=f,fill=fill,stroke_width=stroke,stroke_fill=stroke_fill)
+        yy += size+16
     return yy
 
-def brand(img,n,dark=True):
+def tape(img,xy,text,w=520):
     d=ImageDraw.Draw(img)
-    c=WHITE if dark else INK
-    elephant(d,58,46,0.8,c)
-    d.text((112,44),"ELEPHAN",font=font(FONT_BOLD,29),fill=c)
-    d.text((112,83),"夜職の仕事運・金運",font=font(FONT_REG,18),fill=c if dark else MUTED)
-    d.rounded_rectangle((932,46,1016,92),20,fill=(*BLACK,150) if dark else (255,255,255,210))
-    d.text((952,55),f"{n}/5",font=font(FONT_BOLD,18),fill=WHITE if dark else INK)
+    x,y=xy
+    d.polygon([(x,y+8),(x+w,y),(x+w-15,y+78),(x+12,y+85)],fill=YELLOW)
+    d.text((x+24,y+18),text,font=font(FONT_BOLD,30),fill=BLACK)
 
-def cover(text,out):
-    img=gradient_bg((65,10,110),(10,10,28))
-    add_glow(img,(620,-120,1200,520),PINK,100,180)
-    add_glow(img,(-220,720,420,1380),CYAN,120,135)
-    add_glow(img,(520,730,1180,1420),ORANGE,140,95)
-    add_halftone(img,11,(700,110,1050,480),YELLOW,26,3,130)
-    add_halftone(img,23,(40,930,410,1280),CYAN,30,3,95)
-    brand(img,1,True)
+def checkbox(d,x,y,text):
+    d.rectangle((x,y,x+34,y+34),outline=PINK,width=3)
+    d.line((x+6,y+18,x+14,y+28),fill=PINK,width=4)
+    d.line((x+14,y+28,x+31,y+5),fill=PINK,width=4)
+    d.text((x+54,y-3),text,font=font(FONT_BOLD,27),fill=WHITE)
+
+def footer(img,text="数字だけじゃ分からない。店との相性は、心の余白も見る。"):
     d=ImageDraw.Draw(img)
+    d.line((58,1240,650,1240),fill=GOLD,width=2)
+    d.text((58,1260),text,font=font(FONT_REG,20),fill=WHITE)
 
-    add_starburst(img,870,265,85,138,(*YELLOW,240),18)
-    d.text((796,218),"REAL",font=font(FONT_BOLD,34),fill=BLACK,stroke_width=1,stroke_fill=BLACK)
-
-    add_tape(img,(60,190),"NIGHT WORK / SELF CHECK",YELLOW,-4)
-
-    # oversized hook with hard shadow + white face
-    shadow=Image.new("RGBA",img.size,(0,0,0,0))
-    sd=ImageDraw.Draw(shadow)
-    f=font(FONT_BOLD,86)
-    lines=wrap(sd,text,f,900)
-    yy=360
-    for line in lines:
-        sd.text((78,yy),line,font=f,fill=(*BLACK,180),stroke_width=10,stroke_fill=(*BLACK,180))
-        yy+=102
-    shadow=shadow.filter(ImageFilter.GaussianBlur(10))
-    img.alpha_composite(shadow)
-    draw_outlined_lines(img,text,58,345,86,900,WHITE,PINK,7,16)
-
-    # bottom punchline strip
-    d=ImageDraw.Draw(img)
-    d.rounded_rectangle((56,1080,1024,1218),30,fill=(*BLACK,210),outline=YELLOW,width=4)
-    d.text((90,1108),"売上だけ見て「合ってる店」にしない。",font=font(FONT_BOLD,34),fill=YELLOW)
-    d.text((90,1161),"数字と消耗、両方で見る。",font=font(FONT_REG,24),fill=WHITE)
-
-    out.parent.mkdir(parents=True,exist_ok=True)
-    img.convert("RGB").save(out,"PNG",optimize=True)
-
-def interior(text,n,out):
-    # alternate loud palettes so the carousel has rhythm
-    palettes=[
-        ((255,241,95),(255,87,146),INK,BLACK),
-        ((32,229,255),(85,36,185),WHITE,BLACK),
-        ((255,127,47),(255,55,145),WHITE,BLACK),
-        ((235,229,255),(35,16,78),INK,BLACK)
-    ]
-    bg1,bg2,textc,outline=palettes[n-2]
-    img=gradient_bg(bg1,bg2)
-    brand(img,n,dark=(n in (3,4)))
-    d=ImageDraw.Draw(img)
-
-    # giant page number
-    d.text((720,170),f"0{n}",font=font(FONT_BOLD,190),fill=(*WHITE,65) if n in (3,4) else (*BLACK,45))
-
-    # diagonal accent bars
-    for k,(yy,c) in enumerate([(230,YELLOW),(270,CYAN),(310,PINK)]):
-        d.polygon([(0,yy+k*4),(W,yy-42+k*4),(W,yy+10+k*4),(0,yy+52+k*4)],fill=(*c,150))
-
-    label=["POINT","CHECK","JUDGE","NEXT"][n-2]
-    add_tape(img,(58,190),label,YELLOW,-5 if n%2==0 else 5)
-
-    # central text card with sticker outline
-    card_fill=(255,255,255,220) if n in (2,5) else (8,8,20,205)
-    card_text=INK if n in (2,5) else WHITE
-    d.rounded_rectangle((48,370,1032,1030),42,fill=card_fill,outline=BLACK if n in (2,5) else WHITE,width=5)
-    draw_outlined_lines(img,text,82,430,66,860,card_text,PINK if n in (2,5) else BLACK,3 if n in (2,5) else 5,18)
-
-    # pop badges
-    if n==2:
-        add_starburst(img,870,1035,56,98,(*CYAN,255),16)
-        d.text((824,1003),"別",font=font(FONT_BOLD,44),fill=BLACK)
+def render_special_oct16(n,out,photos):
+    portrait,glass,purple_glass=photos
+    if n==1:
+        img=darken(cover_crop(portrait),0.28)
+        # warm magenta wash
+        wash=Image.new("RGBA",(W,H),(100,0,55,65)); img.alpha_composite(wash)
+        brand(img,1); d=ImageDraw.Draw(img)
+        marker_circle(img,(35,155,600,390))
+        d.text((74,210),"売上はある。",font=font(FONT_SERIF,70),fill=WHITE)
+        d.text((62,425),"でも、",font=font(FONT_SERIF,66),fill=WHITE)
+        d.text((62,510),"この店にいると",font=font(FONT_SERIF,74),fill=WHITE)
+        d.text((55,660),"毎回",font=font(FONT_BOLD,130),fill=PINK,stroke_width=2,stroke_fill=PINK)
+        d.text((120,840),"しんどい。",font=font(FONT_SERIF,118),fill=WHITE)
+        d.text((60,1165),"数字だけじゃ分からない",font=font(FONT_BOLD,25),fill=WHITE)
+        d.text((60,1205),"「合ってる店・合ってない店」のサイン",font=font(FONT_REG,22),fill=WHITE)
+        d.text((865,1275),"SWIPE ›",font=font(FONT_BOLD,22),fill=WHITE)
+    elif n==2:
+        img=darken(cover_crop(glass),0.52); brand(img,2); d=ImageDraw.Draw(img)
+        tape(img,(55,165),"こんな状態、ありませんか？",720)
+        items=["出勤前から気が重い","売上はあるのに満たされない","お客さまに合わせすぎて疲れる","スタッフの顔色ばかり気になる","休みの日も仕事のことを考えてしまう"]
+        yy=380
+        for t in items:
+            checkbox(d,82,yy,t); yy+=105
+        d.line((70,930,1010,930),fill=WHITE,width=2)
+        d.text((85,975),"ひとつでも当てはまるなら、",font=font(FONT_BOLD,30),fill=YELLOW)
+        d.text((85,1028),"「頑張り方」ではなく",font=font(FONT_BOLD,30),fill=YELLOW)
+        d.text((85,1081),"“店との相性”の問題かもしれません。",font=font(FONT_BOLD,30),fill=YELLOW)
+        d.text((455,1245),"ELEPHAN",font=font(FONT_BOLD,22),fill=WHITE)
     elif n==3:
-        add_starburst(img,875,1035,62,105,(*YELLOW,255),18)
-        d.text((815,1004),"2軸",font=font(FONT_BOLD,32),fill=BLACK)
+        img=darken(cover_crop(purple_glass),0.70); brand(img,3); d=ImageDraw.Draw(img)
+        d.text((100,150),"稼げる × 心がラク",font=font(FONT_SERIF,54),fill=WHITE)
+        d.text((275,215),"が最強です。",font=font(FONT_SERIF,52),fill=WHITE)
+        # axes
+        left,top,right,bottom=135,400,945,1040
+        mx=(left+right)//2; my=(top+bottom)//2
+        d.line((left,my,right,my),fill=PINK,width=4)
+        d.line((mx,top,mx,bottom),fill=PINK,width=4)
+        d.text((left,350),"稼げる",font=font(FONT_BOLD,25),fill=WHITE)
+        d.text((right-80,350),"ラク",font=font(FONT_BOLD,25),fill=WHITE)
+        d.text((42,my-15),"しんどい",font=font(FONT_BOLD,22),fill=WHITE)
+        d.text((mx-40,bottom+22),"稼げない",font=font(FONT_BOLD,22),fill=WHITE)
+        boxes=[
+            (left,top,mx,my,"A","売上はあるが\n消耗する","今の状態かも？"),
+            (mx,top,right,my,"B","売上もあり\n心もラク","理想の店"),
+            (left,my,mx,bottom,"C","売上少なめ\n消耗する","今すぐ見直し"),
+            (mx,my,right,bottom,"D","売上少なめ\n心はラク","一時的な避難先"),
+        ]
+        for x1,y1,x2,y2,k,t,s in boxes:
+            d.rounded_rectangle((x1+8,y1+8,x2-8,y2-8),24,outline=WHITE,width=2)
+            d.text((x1+35,y1+25),k,font=font(FONT_SERIF,44),fill=WHITE)
+            d.multiline_text((x1+35,y1+95),t,font=font(FONT_BOLD,27),fill=WHITE,spacing=8)
+            d.text((x1+35,y2-65),s,font=font(FONT_REG,18),fill=YELLOW)
     elif n==4:
-        add_starburst(img,870,1030,62,110,(*CYAN,255),18)
-        d.text((817,1000),"調整",font=font(FONT_BOLD,31),fill=BLACK)
+        img=darken(cover_crop(portrait),0.58); brand(img,4); d=ImageDraw.Draw(img)
+        d.text((68,155),"合ってない店の",font=font(FONT_SERIF,48),fill=WHITE)
+        d.text((410,210),"サイン",font=font(FONT_SERIF,48),fill=WHITE)
+        d.text((660,155),"3つ",font=font(FONT_BOLD,92),fill=PINK)
+        rows=[
+            ("1","感情がすり減る","接客中は笑っていても、終わるとどっと疲れる。"),
+            ("2","条件だけで続けてしまう","時給やバックは良い。でも、それ以外に魅力を感じない。"),
+            ("3","人間関係がストレス","スタッフ・お客さま・黒服など、特定の人の言動に常に気を使っている。"),
+        ]
+        yy=365
+        for num,title,body in rows:
+            d.rounded_rectangle((55,yy,1025,yy+235),24,fill=(5,6,12,205),outline=(255,255,255,80),width=2)
+            d.text((85,yy+35),num,font=font(FONT_BOLD,48),fill=PINK)
+            d.text((155,yy+38),title,font=font(FONT_BOLD,32),fill=YELLOW)
+            d.multiline_text((155,yy+92),body,font=font(FONT_REG,23),fill=WHITE,spacing=6)
+            yy+=260
     else:
-        add_starburst(img,870,1028,62,110,(*YELLOW,255),18)
-        d.text((814,998),"保存",font=font(FONT_BOLD,31),fill=BLACK)
-
-    # footer ribbon
-    d.rounded_rectangle((58,1160,1020,1248),25,fill=(*BLACK,225))
-    footer="必要ならプロフィールから個別に整理できます。" if n==5 else "感情と数字を分けて見る。"
-    d.text((86,1183),footer,font=font(FONT_BOLD,25),fill=WHITE)
-    d.text((62,1290),"占いは判断材料のひとつ。大きな判断は現実の条件も確認してください。",font=font(FONT_REG,15),fill=BLACK if n in (2,5) else WHITE)
-
+        img=darken(cover_crop(glass),0.55); brand(img,5); d=ImageDraw.Draw(img)
+        d.text((80,145),"次の一歩を考える",font=font(FONT_SERIF,50),fill=WHITE)
+        d.text((155,205),"チェックリスト",font=font(FONT_SERIF,50),fill=WHITE)
+        items=["月に数日は「感情」も記録してみる","売上だけでなく「心の余裕」も点数化する","怖い・嫌な人がいる場合は早めに相談する","今の店で変えられないことを明確にする","他の店や働き方の情報も集めておく"]
+        yy=390
+        for t in items:
+            checkbox(d,80,yy,t); yy+=112
+        d.rounded_rectangle((55,1025,1025,1195),24,fill=(70,0,35,175),outline=PINK,width=2)
+        d.text((85,1050),"もっとラクに、もっと稼げる。",font=font(FONT_SERIF,38),fill=PINK)
+        d.text((85,1105),"合う場所は必ずある。",font=font(FONT_SERIF,42),fill=WHITE)
+        d.text((445,1250),"ELEPHAN",font=font(FONT_BOLD,22),fill=WHITE)
     out.parent.mkdir(parents=True,exist_ok=True)
     img.convert("RGB").save(out,"PNG",optimize=True)
 
-def render(text,n,out):
-    if n==1: cover(text,out)
-    else: interior(text,n,out)
+def render_generic(text,n,out,photos):
+    portrait,glass,purple_glass=photos
+    base=[portrait,glass,purple_glass,portrait,glass][n-1]
+    img=darken(cover_crop(base),0.52 if n>1 else 0.36)
+    # color wash alternating
+    wash_colors=[(80,0,55,45),(20,0,30,75),(0,10,60,80),(80,0,25,70),(30,0,55,65)]
+    img.alpha_composite(Image.new("RGBA",(W,H),(*wash_colors[n-1],)))
+    brand(img,n); d=ImageDraw.Draw(img)
+    if n==1:
+        marker_circle(img,(40,175,920,480))
+        headline(img,text,55,245,76,950,fill=WHITE,serif=True)
+        d.text((58,1125),"まず、今の状況を言葉にする。",font=font(FONT_BOLD,29),fill=YELLOW)
+        footer(img)
+    else:
+        tape(img,(55,170),["POINT","CHECK","JUDGE","NEXT"][n-2],420)
+        d.rounded_rectangle((55,345,1025,1040),30,fill=(5,6,12,205),outline=(255,255,255,90),width=2)
+        headline(img,text,90,430,59,855,fill=WHITE,serif=(n in (2,5)))
+        d.rounded_rectangle((55,1110,1025,1190),20,fill=(40,0,30,210))
+        d.text((85,1131),"感情と数字を分けて見る。",font=font(FONT_BOLD,25),fill=YELLOW)
+        footer(img)
+    out.parent.mkdir(parents=True,exist_ok=True)
+    img.convert("RGB").save(out,"PNG",optimize=True)
 
 def main():
     posts=json.loads((ROOT/"posts.json").read_text(encoding="utf-8"))
+    photos=(load_remote(PORTRAIT_URL),load_remote(GLASS_URL),load_remote(PURPLE_GLASS_URL))
     for p in posts:
         if len(p["slides"])!=5:
             raise ValueError(f"{p['date']}: five slides required")
         for i,t in enumerate(p["slides"],1):
-            render(t,i,OUT/p["date"]/f"{i:02d}.png")
-        print(f"rendered {p['date']} popnight_v3")
+            out=OUT/p["date"]/f"{i:02d}.png"
+            if p["date"]=="2026-10-16":
+                render_special_oct16(i,out,photos)
+            else:
+                render_generic(t,i,out,photos)
+        print(f"rendered {p['date']} nightlife_photo_v4")
 
 if __name__=="__main__":
     main()
