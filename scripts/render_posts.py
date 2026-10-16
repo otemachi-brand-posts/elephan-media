@@ -206,6 +206,8 @@ def main():
     posts=json.loads((ROOT/"posts.json").read_text(encoding="utf-8"))
     photos=(load_remote(PORTRAIT_URL),load_remote(GLASS_URL),load_remote(PURPLE_GLASS_URL))
     for p in posts:
+        if p["date"] < "2026-10-16":
+            continue
         if len(p["slides"])!=5:
             raise ValueError(f"{p['date']}: five slides required")
         for i,t in enumerate(p["slides"],1):
