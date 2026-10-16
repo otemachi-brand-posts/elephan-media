@@ -1,0 +1,49 @@
+name: Install approved ELEPHAN Oct 17 carousel images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-elephan-approved-20261017.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Extract and validate approved Instagram image files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,hashlib
+          src=Path("transfer/elephan-2026-10-17-approved.zip")
+          expected_sha="74938debbd78e4ce9211b1bc414c299238b235019c2e694e45ad6e254fc90522"
+          actual=hashlib.sha256(src.read_bytes()).hexdigest()
+          if actual!=expected_sha:
+              raise ValueError(f"Approved ZIP digest mismatch: {actual}")
+          dest=Path("generated/2026-10-17-revised")
+          dest.mkdir(parents=True,exist_ok=True)
+          with zipfile.ZipFile(src) as z:
+              for i in range(1,6):
+                  n=f"elephan_new_carousel_2026-10-17/{i:02d}.jpg"
+                  b=z.read(n)
+                  if not b.startswith(bytes.fromhex("ffd8ff")) or not b.endswith(bytes.fromhex("ffd9")):
+                      raise ValueError(f"Not valid JPEG wrapper: {n}")
+                  (dest/f"{i:02d}.jpg").write_bytes(b)
+                  print(f"STAGED {i:02d}.jpg {len(b)} bytes",flush=True)
+          PY
+      - name: Commit generated images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add generated/2026-10-17-revised/
+          if git diff --cached --quiet; then
+            echo "All five replacement images already installed."
+            exit 0
+          fi
+          git commit -m "Install approved glamorous ELEPHAN Oct 17 five-slide carousel"
+          git push
