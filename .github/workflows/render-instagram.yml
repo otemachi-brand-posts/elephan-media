@@ -6,6 +6,7 @@ on:
     paths:
       - 'posts.json'
       - 'scripts/render_posts.py'
+      - 'scripts/render_future_elephan.py'
       - '.github/workflows/render-instagram.yml'
   workflow_dispatch:
 
@@ -31,7 +32,9 @@ jobs:
           sudo apt-get install -y fonts-noto-cjk
           python -m pip install --disable-pip-version-check pillow==11.3.0
       - name: Render images
-        run: python scripts/render_posts.py
+        run: |
+          python scripts/render_posts.py
+          python scripts/render_future_elephan.py
       - name: Commit rendered images
         run: |
           git config user.name "github-actions[bot]"
