@@ -74,9 +74,9 @@ def source_portraits():
         if not (SOURCE / f"{i:02d}.jpg").exists():
             raise FileNotFoundError(f"Approved image not found: {i:02d}.jpg")
     # Actual clean model-only crops from the user-approved 10/17 photos.
-    a = Image.open(SOURCE/"01.jpg").convert("RGB").crop((690,210,1060,1130))
+    a = Image.open(SOURCE/"01.jpg").convert("RGB").crop((716,210,1055,850))
     b = Image.open(SOURCE/"02.jpg").convert("RGB").crop((634,175,1051,1085))
-    c = Image.open(SOURCE/"04.jpg").convert("RGB").crop((29,435,542,940))
+    c = Image.open(SOURCE/"04.jpg").convert("RGB").crop((39,445,518,852))
     return [a,b,c]
 
 def background(portraits,seed):
@@ -158,9 +158,9 @@ def render(post,n,portraits,seed):
         portrait_on(im,model,right=True,top=175,width=600,height=1060)
         overlay(im,238,side="left")
         badge(im,"CHECK 01 / まず整理",GOLD)
-        card(im,(55,367,855,1034),edge=PINK)
-        bottom=draw_copy(im,post["slides"][1],93,478,715,475,base_size=83,last_color=PINK)
-        neon_line(im,94,min(980,bottom+25),695)
+        card(im,(55,367,687,944),fill=(10,1,24,202),edge=PINK)
+        bottom=draw_copy(im,post["slides"][1],91,467,544,416,base_size=66,last_color=PINK)
+        neon_line(im,94,min(910,bottom+25),530)
         ImageDraw.Draw(im).text((80,1102),"焦らず、事実を分けて見る。",font=font(33),fill=GOLD)
     elif n == 3:
         portrait_on(im,model,right=False,top=188,width=660,height=1050)
@@ -175,17 +175,17 @@ def render(post,n,portraits,seed):
         portrait_on(im,model,right=True,top=187,width=620,height=1020)
         overlay(im,231,side="left")
         badge(im,"REAL CHECK / 大切なサイン",GOLD)
-        card(im,(54,375,868,1017),edge=PINK)
-        bottom=draw_copy(im,post["slides"][3],87,484,704,444,base_size=80)
-        neon_line(im,86,min(976,bottom+25),719)
+        card(im,(54,375,697,946),fill=(10,1,24,198),edge=PINK)
+        bottom=draw_copy(im,post["slides"][3],87,469,560,419,base_size=65)
+        neon_line(im,86,min(916,bottom+25),549)
         ImageDraw.Draw(im).text((91,1101),"無理していないか、確認しよう。",font=font(29),fill=GOLD)
     else:
         portrait_on(im,model,right=True,top=160,width=620,height=1090)
         overlay(im,236,side="left")
         badge(im,"SAVE / 次にできること",GOLD)
-        card(im,(50,359,875,971),edge=GOLD)
-        bottom=draw_copy(im,post["slides"][4],87,450,725,444,base_size=69)
-        neon_line(im,85,min(934,bottom+22),720)
+        card(im,(50,359,690,965),fill=(10,1,24,201),edge=GOLD)
+        bottom=draw_copy(im,post["slides"][4],87,451,555,462,base_size=60)
+        neon_line(im,85,min(928,bottom+22),545)
         d=ImageDraw.Draw(im)
         d.rounded_rectangle((55,1075,1030,1205),26,fill=PINK)
         cta="個別鑑定はプロフィールのLINEへ" if "プロフィール" in post["slides"][4] or "LINE" in post["slides"][4] else "保存して、あとから見返す"
