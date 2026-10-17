@@ -1,5 +1,5 @@
-"""Render ELEPHAN carousels with the current nightlife-magazine visual system."""
-from elephan_magazine_v6 import main
+"""ELEPHAN Instagram renderer: only use the approved glamorous editorial system."""
+from render_future_elephan import main
 
 if __name__ == "__main__":
     main()
