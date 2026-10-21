@@ -52,7 +52,7 @@ def handwritten_line(im,x,y,x2):
 
 def source_images():
     imgs=[]
-    for n,crop in [(1,(575,170,1060,1140)),(2,(627,160,1058,1100)),(4,(37,340,579,995))]:
+    for n,crop in [(1,(714,222,1049,1116)),(2,(648,210,1049,1090))]:
         src=Image.open(SRC/f"{n:02d}.jpg").convert("RGB")
         # Crops deliberately exclude almost all of the old text.
         imgs.append(src.crop(crop))
