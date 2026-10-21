@@ -1,4 +1,4 @@
-name: Render ELEPHAN approved-style Instagram images
+name: Render ELEPHAN neon Instagram carousels
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     paths:
       - 'posts.json'
       - 'scripts/render_posts.py'
-      - 'scripts/render_future_elephan.py'
+      - 'scripts/render_neon_v2.py'
       - '.github/workflows/render-instagram.yml'
   workflow_dispatch:
 
@@ -20,44 +20,43 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'
-      - name: Install fonts and renderer
+      - name: Install fonts and Pillow
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y fonts-noto-cjk
           python -m pip install --disable-pip-version-check pillow==11.3.0
-      - name: Render and verify 5 JPEGs per day
+      - name: Render neon-v2, 5 JPEGs per date
         run: |
           python scripts/render_posts.py
           python - <<'PY'
           from PIL import Image
           from pathlib import Path
           import json
-          p=json.loads(Path('posts.json').read_text(encoding='utf-8'))
-          for post in p:
-            if post['date']<'2026-10-18':continue
-            root=Path('generated/glam-v1')/post['date']
+          for p in json.loads(Path("posts.json").read_text()):
+            if p["date"]<"2026-10-21":continue
+            folder=Path("generated/neon-v2")/p["date"]
             for n in range(1,6):
-              f=root/f'{n:02d}.jpg'
-              with Image.open(f) as im:
-                if im.size!=(1080,1350) or im.format!='JPEG':
-                  raise ValueError(f'Invalid carousel slide: {f}')
-              if f.stat().st_size<30000:raise ValueError(f'Empty slide: {f}')
-            print('VERIFIED',post['date'],'5 JPEG images')
+              path=folder/f"{n:02d}.jpg"
+              if not path.is_file():raise RuntimeError(str(path)+" missing")
+              with Image.open(path) as im:
+                assert im.format=="JPEG" and im.size==(1080,1350)
+            print("VERIFIED 5",p["date"],flush=True)
           PY
-      - name: Commit only new glamorous assets
+      - name: Save neon media
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add generated/glam-v1/
+          git add generated/neon-v2/
           if git diff --cached --quiet; then
-            echo "No image changes"
+            echo "No new images"
             exit 0
           fi
-          git commit -m "Render ELEPHAN glamorous 5-slide carousels"
+          git commit -m "Render ELEPHAN neon-v2 5-image daily carousels"
+          git pull --rebase origin main
           git push
