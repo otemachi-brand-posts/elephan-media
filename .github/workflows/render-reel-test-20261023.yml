@@ -1,0 +1,41 @@
+name: Render Oct 23 ELEPHAN trial Reel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/render-reel-test-20261023.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: elephan-reel-oct23-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Install Japanese fonts and image renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk ffmpeg
+          python -m pip install pillow==11.3.0
+      - name: Render and validate 15-second portrait MP4
+        run: python scripts/render_reel_test_20261023.py
+      - name: Commit public MP4 for Buffer publishing
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add generated/reels/2026-10-23-elephan-test.mp4
+          git diff --cached --quiet && { echo "MP4 unchanged"; exit 0; }
+          git commit -m "Publish hosting for ELEPHAN Oct 23 trial Reel media"
+          git pull --rebase origin main
+          git push
