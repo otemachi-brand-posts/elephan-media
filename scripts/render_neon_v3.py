@@ -42,11 +42,17 @@ def wrap(text,draw,ff,maxw):
 
 def headline(im,text,x,y,maxwidth=700,maxheight=725,start=107,minimum=52):
     d=ImageDraw.Draw(im)
+    source_lines=[s for s in normalize(text).split("\n") if s]
     for sz in range(start,minimum-1,-2):
-        lines=wrap(text,d,font(sz),maxwidth)
+        ff=font(sz)
         leading=int(sz*1.22)
-        if len(lines)*leading<=maxheight:
+        if all(d.textbbox((0,0),s,font=ff)[2]<=maxwidth for s in source_lines) and len(source_lines)*leading<=maxheight:
+            lines=source_lines
             break
+    else:
+        lines=wrap(text,d,font(minimum),maxwidth)
+        sz=minimum
+        leading=int(sz*1.22)
     # Pink neon shadow, bold white letters, hot-pink edge -- based on the
     # highest-viewed Oct 17 approved slide rather than weak thin serif.
     for i,line in enumerate(lines):
