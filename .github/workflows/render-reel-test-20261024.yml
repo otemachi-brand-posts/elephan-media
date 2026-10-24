@@ -1,0 +1,43 @@
+name: Render ELEPHAN Oct 24 Reel MP4
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/render-reel-test-20261024.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: elephan-oct24-reel-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Install fonts, Pillow and ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk ffmpeg
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+      - name: Render and verify Reel MP4
+        run: python scripts/render_reel_test_20261024.py
+      - name: Publish public video to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add generated/reels/2026-10-24-elephan-reel.mp4
+          if git diff --cached --quiet; then
+            echo 'No changes to video'
+            exit 0
+          fi
+          git commit -m 'Host Oct 24 ELEPHAN 15s Reel MP4'
+          git pull --rebase origin main
+          git push
