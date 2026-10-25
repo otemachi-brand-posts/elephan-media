@@ -6,7 +6,7 @@ on:
     paths:
       - 'posts.json'
       - 'scripts/render_posts.py'
-      - 'scripts/render_neon_v3.py'
+      - 'scripts/render_neon_v4.py'
       - '.github/workflows/render-instagram.yml'
   workflow_dispatch:
 
@@ -31,7 +31,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y fonts-noto-cjk
           python -m pip install --disable-pip-version-check pillow==11.3.0
-      - name: Render neon-v3, 5 JPEGs per date
+      - name: Render neon-v4, 5 JPEGs per date
         run: |
           python scripts/render_posts.py
           python - <<'PY'
@@ -40,7 +40,7 @@ jobs:
           import json
           for p in json.loads(Path("posts.json").read_text()):
             if p["date"]<"2026-10-25":continue
-            folder=Path("generated/neon-v3")/p["date"]
+            folder=Path("generated/neon-v4")/p["date"]
             for n in range(1,6):
               path=folder/f"{n:02d}.jpg"
               if not path.is_file():raise RuntimeError(str(path)+" missing")
@@ -52,11 +52,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add generated/neon-v3/
+          git add generated/neon-v4/
           if git diff --cached --quiet; then
             echo "No new images"
             exit 0
           fi
-          git commit -m "Render ELEPHAN neon-v3 5-image daily carousels"
+          git commit -m "Render ELEPHAN neon-v4 5-image daily carousels"
           git pull --rebase origin main
           git push
