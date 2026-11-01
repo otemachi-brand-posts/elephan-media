@@ -76,11 +76,12 @@ def scribble(im,y,x=41,x2=685):
 
 def photograph_sources():
     # Crop ONLY the original approved adult evening-wear photographs,
+    # excluding the baked-in 1/5 and 2/5 counters in their upper-right corners.
     # avoiding baked-in old text, boxes and branding.
     raw=[Image.open(SOURCE/f"{n:02d}.jpg").convert("RGB") for n in range(1,6)]
     return [
-        raw[0].crop((670,150,1054,1196)), # champagne dress; no old lettering
-        raw[1].crop((638,144,1050,1055)), # black lace dress; no old lettering
+        raw[0].crop((670,205,1075,1196)), # champagne dress; no old lettering
+        raw[1].crop((638,205,1075,1055)), # black lace dress; no old lettering
         raw[3].crop((22,312,415,758))    # red cocktail dress; no old lettering
     ]
 
