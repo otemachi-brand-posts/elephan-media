@@ -153,17 +153,18 @@ def mini_sentences(text):
     words=[s.strip() for s in text.split("。") if s.strip()]
     return [s[:36] for s in words[:2]]
 
+# Keep the portrait face in a separate right-hand photo column; text stays left.
 def slide1(post,img,seed):
-    im=backdrop(seed,img);apply_model(im,img,x=335,y=150,w=760,h=1060)
+    im=backdrop(seed,img);apply_model(im,img,x=620,y=150,w=465,h=1060)
     glow_text(im,(50,190),"今夜のホンネ…",56,kind="hand")
-    headline(im,post["slides"][0],y=286,maxw=730,maxh=520,start=105)
+    headline(im,post["slides"][0],y=286,maxw=545,maxh=580,start=88)
     white_text(im,(57,1101),"これ、私のことかも…？",35,"hand",1)
     furniture(im,1)
     gold_sparkle(im,730,275)
     return im.convert("RGB")
 
 def slide2(post,img,seed):
-    im=backdrop(seed,img);apply_model(im,img,x=416,y=190,w=685,h=1025)
+    im=backdrop(seed,img);apply_model(im,img,x=650,y=190,w=435,h=1025)
     white_text(im,(38,192),"こんな状態",82)
     glow_text(im,(42,283),"当てはまる？",77,"hand")
     scribble(im,389,48,708)
@@ -194,9 +195,9 @@ def slide2(post,img,seed):
 
 def slide3(post,img,seed):
     im=backdrop(seed,img)
-    apply_model(im,img,x=410,y=175,w=680,h=1010)
+    apply_model(im,img,x=620,y=175,w=465,h=1010)
     white_text(im,(72,181),"今、見るべきこと",73)
-    headline(im,post["slides"][2],y=300,maxw=730,maxh=470,start=92)
+    headline(im,post["slides"][2],y=300,maxw=545,maxh=470,start=80)
     d=ImageDraw.Draw(im)
     d.rounded_rectangle((37,870,788,1079),22,fill=(15,1,19,220),outline=GOLD,width=3)
     white_text(im,(74,892),"気になるところを",42,"display",1)
@@ -209,7 +210,7 @@ def slide4(post,img,seed):
     im=backdrop(seed,img)
     # Original Oct17 layout: a large visible fashion portrait and a concise
     # semi-transparent checklist area, not a blank giant black rectangle.
-    apply_model(im,img,x=0,y=275,w=742,h=890)
+    apply_model(im,img,x=0,y=275,w=515,h=890)
     glow_text(im,(415,169),"見逃さないで…",61,"hand")
     dark_panel(im,(526,386,1038,876),200)
     txt=post["slides"][3]
@@ -228,7 +229,7 @@ def slide4(post,img,seed):
 
 def slide5(post,img,seed):
     im=backdrop(seed,img)
-    apply_model(im,img,x=295,y=177,w=790,h=1005)
+    apply_model(im,img,x=680,y=177,w=405,h=1005)
     white_text(im,(51,190),"これから、どうする？",57,"display",2)
     dark_panel(im,(42,356,754,913),194)
     headline(im,post["slides"][4],y=411,x=65,maxw=635,maxh=410,start=74)
