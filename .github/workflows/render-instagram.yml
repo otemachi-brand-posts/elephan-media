@@ -6,7 +6,7 @@ on:
     paths:
       - 'posts.json'
       - 'scripts/render_posts.py'
-      - 'scripts/render_classic_v1.py'
+      - 'scripts/render_classic_v2.py'
       - '.github/workflows/render-instagram.yml'
   workflow_dispatch:
 
@@ -35,7 +35,7 @@ jobs:
           sudo curl -fL --retry 3 --max-time 60 -o /usr/local/share/fonts/elephan/KaiseiDecol-Bold.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/kaiseidecol/KaiseiDecol-Bold.ttf
           sudo curl -fL --retry 3 --max-time 60 -o /usr/local/share/fonts/elephan/ZenKurenaido-Regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/zenkurenaido/ZenKurenaido-Regular.ttf
           sudo fc-cache -f
-      - name: Render classic-v1, 5 JPEGs per date
+      - name: Render classic-v2, 5 JPEGs per date
         run: |
           python scripts/render_posts.py
           python - <<'PY'
@@ -44,7 +44,7 @@ jobs:
           import json
           for p in json.loads(Path("posts.json").read_text()):
             if p["date"]<"2026-11-01":continue
-            folder=Path("generated/classic-v1")/p["date"]
+            folder=Path("generated/classic-v2")/p["date"]
             for n in range(1,6):
               path=folder/f"{n:02d}.jpg"
               if not path.is_file():raise RuntimeError(str(path)+" missing")
@@ -56,11 +56,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add generated/classic-v1/
+          git add generated/classic-v2/
           if git diff --cached --quiet; then
             echo "No new images"
             exit 0
           fi
-          git commit -m "Render ELEPHAN classic-v1 5-image daily carousels"
+          git commit -m "Render ELEPHAN classic-v2 5-image daily carousels"
           git pull --rebase origin main
           git push
