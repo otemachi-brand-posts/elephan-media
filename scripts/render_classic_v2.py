@@ -180,8 +180,9 @@ def slide2(post,img,seed):
         while ImageDraw.Draw(im).textbbox((0,0),s,font=font(size,"display"))[2]>600 and size>38:size-=2
         white_text(im,(140,yy),s,size,stroke=1)
     if len(words)<3:
-        caption=mini_sentences(post.get("caption",""))
-        for k,s in enumerate(caption[:3-len(words)]):
+        # Short, complete checklist prompts avoid clipping an arbitrary caption mid-sentence.
+        prompts=["今の状況を整理する","変えられる条件を確認"]
+        for k,s in enumerate(prompts[:3-len(words)]):
             yy=500+(len(words)+k)*106
             d.rectangle((68,yy+14,111,yy+57),outline=HOT,width=5)
             d.line((75,yy+34,87,yy+49,116,yy+7),fill=PINK,width=6)
